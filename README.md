@@ -15,7 +15,7 @@ The current release includes the following features:
  - `act_order_row`: whether to re-order rows before the quantization based on the row-wise Hessian $\mathbf{H}_{row}$
  - `qparam_comput`: how to select quantization grids. Grids can be determined with a naive MinMax or to minimize the weight perturbation (MMSE) or the layer-wise reconstruction error (Hessian)
 
-For more details on other arguments, please refer to [process_args.py](process_args.py).
+For more details on other arguments, please refer to [process_args.py](utils/process_args.py).
 
 ## Experimental Results
  - Setup
