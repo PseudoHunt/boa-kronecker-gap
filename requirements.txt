@@ -1,0 +1,9 @@
+# loguru==0.7.2
+# tqdm==4.67.0
+# geoopt==0.5.0
+# einops==0.6.0
+# scipy==1.10.1
+sentencepiece
+transformers==4.53.0
+datasets==3.5.0
+lm-eval==0.4.9
