@@ -1,0 +1,8 @@
+=== boa w2 seed0 ===
+=== boa w2 seed0 (relaunch) ===
+  -> {'wikitext2': 85.884, 'c4-new': 154.854, 'time': 1183.002}
+=== rsq-col w2 seed0 (relaunch) ===
+  -> {'wikitext2': 261.063, 'c4-new': 347.634, 'time': 219.103}
+=== boa+rsq w2 seed0 (relaunch) ===
+  -> {'wikitext2': 256.979, 'c4-new': 370.128, 'time': 1252.874}
+ALL DONE

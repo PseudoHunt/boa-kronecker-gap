@@ -1,0 +1,24 @@
+=== RUN w_bits=3 act=none ===
+  -> {'wikitext2': 32.714, 'c4-new': 32.815, 'time': 610.808}
+=== RUN w_bits=3 act=col ===
+  -> {'wikitext2': 32.304, 'c4-new': 32.311, 'time': 470.619}
+skip w3_row
+=== RUN w_bits=3 act=colrow ===
+  -> {'wikitext2': 31.94, 'c4-new': 32.066, 'time': 249.443}
+=== RUN w_bits=2 act=none ===
+  -> {'wikitext2': 93.861, 'c4-new': 162.107, 'time': 170.34}
+=== RUN w_bits=2 act=col ===
+  -> {'wikitext2': 103.945, 'c4-new': 164.228, 'time': 346.494}
+=== RUN w_bits=2 act=row ===
+  -> {'wikitext2': 85.884, 'c4-new': 154.854, 'time': 475.722}
+=== RUN w_bits=2 act=colrow ===
+  -> {'wikitext2': 90.793, 'c4-new': 155.251, 'time': 169.686}
+=== RUN w_bits=4 act=none ===
+  -> {'wikitext2': 28.75, 'c4-new': 27.877, 'time': 168.28}
+=== RUN w_bits=4 act=col ===
+  -> {'wikitext2': 28.731, 'c4-new': 27.899, 'time': 457.805}
+=== RUN w_bits=4 act=row ===
+  -> {'wikitext2': 28.6, 'c4-new': 27.85, 'time': 735.345}
+=== RUN w_bits=4 act=colrow ===
+  -> {'wikitext2': 28.693, 'c4-new': 27.819, 'time': 520.116}
+ALL DONE

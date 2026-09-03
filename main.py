@@ -12,7 +12,7 @@ if __name__ == '__main__':
     
     # load model
     with redirect_stdout(io.StringIO()) as f:
-        llm = get_model(args.llm_path)
+        llm = get_model(args.llm_path, attn_implementation=args.attn_impl)
     llm.seqlen = args.seqlen
     llm.eval()
 

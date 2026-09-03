@@ -1,0 +1,9 @@
+ppl performance
+Generating test split:   0%|                                                                                                        | 0/4358 [00:00<?, ? examples/s]Generating test split: 100%|█████████████████████████████████████████████████████████████████████████████████████████| 4358/4358 [00:00<00:00, 350107.78 examples/s]
+Generating train split:   0%|                                                                                                      | 0/36718 [00:00<?, ? examples/s]Generating train split: 100%|██████████████████████████████████████████████████████████████████████████████████████| 36718/36718 [00:00<00:00, 932490.82 examples/s]
+Generating validation split:   0%|                                                                                                  | 0/3760 [00:00<?, ? examples/s]Generating validation split: 100%|███████████████████████████████████████████████████████████████████████████████████| 3760/3760 [00:00<00:00, 837613.29 examples/s]
+wikitext2 : 27.654
+Generating validation split: 0 examples [00:00, ? examples/s]Generating validation split: 9120 examples [00:00, 57798.18 examples/s]Generating validation split: 18229 examples [00:00, 60898.63 examples/s]Generating validation split: 27647 examples [00:00, 63458.25 examples/s]Generating validation split: 36991 examples [00:00, 64387.28 examples/s]Generating validation split: 45576 examples [00:00, 64625.59 examples/s]Generating validation split: 45576 examples [00:00, 63552.93 examples/s]
+c4-new : 26.564
+zero-shot performance
+{'wikitext2': 27.654, 'c4-new': 26.564}

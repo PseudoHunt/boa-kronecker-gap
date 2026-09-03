@@ -1,3 +1,21 @@
+# BoA — Kronecker-gap study (fork)
+
+This is a research fork of [SamsungLabs/BOA](https://github.com/SamsungLabs/BOA)
+(ICML 2025, CC BY-NC 4.0 — license and attribution retained below). It adds, behind
+new CLI flags and without changing the default path (`tests/test_byte_identical.py`):
+
+- a fix for a causal-attention bug that corrupts 4 of 6 layers' Hessians on OPT under
+  transformers >= 4.53 (`--attn_impl`, see `results/BUG_causal_attention.md`);
+- diagnostics measuring how much BoA's Kronecker-factored attention Hessians lose to
+  pooling (`--phase1`), to the ReLU gate in `fc1` (`--phase4`), and to the discarded
+  softmax Jacobian (`--dense_arm`, an exact dense reference solver);
+- the paper's eq. (9) value-projection row metric (`--row_metric_v`), an MLP-aware
+  `fc1` row metric (`--row_metric_fc1`), and RSQ token weights (`--rsq_weights`).
+
+Findings, tables and the verdict: **`results/SUMMARY.md`**. Related work: `results/related.md`.
+
+---
+
 # BoA
 This repository contains the code for the ICML 2025 paper [**BoA: Attention-Aware Post-Training Quantization without Backpropagation**](https://arxiv.org/abs/2406.13474). 
 

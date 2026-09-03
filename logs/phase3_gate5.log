@@ -1,0 +1,35 @@
+/home/BOA/utils/data_utils.py:17: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  calib_data = torch.load(cache_calib_data_path)
+load calibration from cache/calib_opt_wikitext2_128_2048_0.cache
+Start quantization
+load calibration from cache/calib_opt_wikitext2_8_2048_1000.cache
+[dense] arm=boa blocks=[0] -> /home/BOA/results/phase3_gate
+>>>> Quantizing 1-th Transformer Block.... (1/12)
+[dense] block 0: cached 8 calib + 8 held-out sequences
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+      [diag] |U_dense - kron(U_row,U_col)|/|U|: fp32 route 1.799e-05, fp64 route 3.994e-06
+Traceback (most recent call last):
+  File "/home/BOA/main.py", line 32, in <module>
+    boa_fwrd(llm, calib_data, qconfigs, boa_opts, hyperparams, args)
+  File "/root/miniconda3/envs/py3.10/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/BOA/quantize.py", line 94, in boa_fwrd
+    if not (dense and dcoll.quantize_layer(i, name, wrappers[name], boa_opts)):
+  File "/root/miniconda3/envs/py3.10/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/BOA/diag/dense_driver.py", line 90, in quantize_layer
+    Q_dense = solve_layer_dense(
+  File "/root/miniconda3/envs/py3.10/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/BOA/diag/dense_ref.py", line 267, in solve_layer_dense
+    gate64 = _fp64_gate(wrapper, W[h], Hc, H_row[h], scale[h], zero[h], maxq, d, log)
+  File "/root/miniconda3/envs/py3.10/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/BOA/diag/dense_ref.py", line 328, in _fp64_gate
+    q = dense_gptq(W64.reshape(-1), None, sc64.expand(d_h, d).reshape(-1),
+  File "/root/miniconda3/envs/py3.10/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/BOA/diag/dense_ref.py", line 89, in dense_gptq
+    W[i2:] -= Err1 @ U[i1:i2, i2:]
+RuntimeError: expected mat1 and mat2 to have the same dtype, but got: float != double

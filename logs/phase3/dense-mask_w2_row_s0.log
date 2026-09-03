@@ -1,0 +1,30 @@
+/home/BOA/utils/data_utils.py:17: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  calib_data = torch.load(cache_calib_data_path)
+load calibration from cache/calib_opt_wikitext2_128_2048_0.cache
+Start quantization
+load calibration from cache/calib_opt_wikitext2_32_2048_1000.cache
+[dense] arm=mask blocks=[0, 5, 11] -> results/phase3/dense-mask_w2_s0
+>>>> Quantizing 1-th Transformer Block.... (1/12)
+[dense] block 0: cached 32 calib + 32 held-out sequences
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+Traceback (most recent call last):
+  File "/home/BOA/main.py", line 32, in <module>
+    boa_fwrd(llm, calib_data, qconfigs, boa_opts, hyperparams, args)
+  File "/root/miniconda3/envs/py3.10/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/BOA/quantize.py", line 95, in boa_fwrd
+    if not (dense and dcoll.quantize_layer(i, name, wrappers[name], boa_opts)):
+  File "/root/miniconda3/envs/py3.10/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/BOA/diag/dense_driver.py", line 92, in quantize_layer
+    Q_dense = solve_layer_dense(
+  File "/root/miniconda3/envs/py3.10/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/BOA/diag/dense_ref.py", line 295, in solve_layer_dense
+    U_given = chol_of_inverse_dense(H64); del H64
+  File "/root/miniconda3/envs/py3.10/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/BOA/diag/dense_ref.py", line 55, in chol_of_inverse_dense
+    Hinv = torch.cholesky_inverse(L)
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 18.00 GiB. GPU 0 has a total capacity of 79.10 GiB of which 9.05 GiB is free. Process 13734 has 1.71 GiB memory in use. Process 14243 has 1.79 GiB memory in use. Process 14463 has 1.67 GiB memory in use. Process 14578 has 1.75 GiB memory in use. Process 14816 has 63.10 GiB memory in use. Of the allocated memory 62.11 GiB is allocated by PyTorch, and 39.77 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

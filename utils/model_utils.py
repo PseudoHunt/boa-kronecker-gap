@@ -9,9 +9,16 @@ torch.nn.init.uniform_ = skip
 torch.nn.init.normal_ = skip
 
 
-def get_opt(model_path):
+def _attn_kwargs(attn_implementation):
+    if attn_implementation in (None, 'auto'):
+        return {}
+    return {'attn_implementation': attn_implementation}
+
+
+def get_opt(model_path, attn_implementation='eager'):
     from transformers import OPTForCausalLM
-    model = OPTForCausalLM.from_pretrained(model_path, torch_dtype='auto')
+    model = OPTForCausalLM.from_pretrained(model_path, torch_dtype='auto',
+                                           **_attn_kwargs(attn_implementation))
     return model
 
 
@@ -32,11 +39,11 @@ def get_qwen3(model_path):
     return model
 
     
-def get_model(model_path):
+def get_model(model_path, attn_implementation='eager'):
     if 'llama' in model_path:
         return get_llama(model_path)
     elif 'opt' in model_path:
-        return get_opt(model_path)
+        return get_opt(model_path, attn_implementation=attn_implementation)
     elif "qwen2" in model_path.lower():
         return get_qwen2(model_path)
     elif "qwen3" in model_path.lower():

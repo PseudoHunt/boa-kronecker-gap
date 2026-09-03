@@ -1,0 +1,14 @@
+=== w3 base seed0 ===
+  -> {'wikitext2': 31.94, 'c4-new': 32.066, 'time': 444.358}
+=== w3 base seed1 ===
+  -> {'wikitext2': 31.921, 'c4-new': 32.007, 'time': 734.832}
+=== w3 base seed2 ===
+  -> {'wikitext2': 32.19, 'c4-new': 32.112, 'time': 521.331}
+=== w3 rowv seed0 ===
+  -> {'wikitext2': 32.093, 'c4-new': 32.087, 'time': 503.642}
+=== w3 rowv seed1 ===
+  -> {'wikitext2': 31.969, 'c4-new': 32.127, 'time': 539.832}
+=== w3 rowv seed2 ===
+  -> {'wikitext2': 32.17, 'c4-new': 32.074, 'time': 583.928}
+=== w2 base seed0 ===
+ALL DONE

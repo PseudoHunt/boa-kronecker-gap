@@ -1,0 +1,184 @@
+/home/BOA/utils/data_utils.py:17: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  calib_data = torch.load(cache_calib_data_path)
+load calibration from cache/calib_opt_wikitext2_128_2048_0.cache
+Start quantization
+[phase4] fc1/ReLU Kronecker-gap diagnostic -> /home/BOA/results/phase4
+>>>> Quantizing 1-th Transformer Block.... (1/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+[phase4] block 0: T_sub=1.2571e+03  id/T=0.434  kron/T=0.890  ek/T=1.000  ek-vs-kron relF=0.2326 (null 0.0045)  sal kron-vs-id top5=0.645  ek-vs-kron top5=0.942
+>>>> Quantizing 2-th Transformer Block.... (2/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+[phase4] block 1: T_sub=1.2018e+03  id/T=0.312  kron/T=0.339  ek/T=0.386  ek-vs-kron relF=0.0542 (null 0.0049)  sal kron-vs-id top5=0.379  ek-vs-kron top5=0.865
+>>>> Quantizing 3-th Transformer Block.... (3/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+[phase4] block 2: T_sub=7.2266e+02  id/T=0.462  kron/T=0.457  ek/T=0.556  ek-vs-kron relF=0.1154 (null 0.0038)  sal kron-vs-id top5=0.349  ek-vs-kron top5=0.885
+>>>> Quantizing 4-th Transformer Block.... (4/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+[phase4] block 3: T_sub=3.3209e+02  id/T=0.383  kron/T=0.491  ek/T=0.558  ek-vs-kron relF=0.1089 (null 0.0077)  sal kron-vs-id top5=0.422  ek-vs-kron top5=0.895
+>>>> Quantizing 5-th Transformer Block.... (5/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+[phase4] block 4: T_sub=2.2640e+03  id/T=0.183  kron/T=0.130  ek/T=0.191  ek-vs-kron relF=0.0476 (null 0.0044)  sal kron-vs-id top5=0.321  ek-vs-kron top5=0.940
+>>>> Quantizing 6-th Transformer Block.... (6/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+[phase4] block 5: T_sub=7.1666e+02  id/T=0.950  kron/T=0.798  ek/T=0.817  ek-vs-kron relF=0.0285 (null 0.0025)  sal kron-vs-id top5=0.330  ek-vs-kron top5=0.979
+>>>> Quantizing 7-th Transformer Block.... (7/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+[phase4] block 6: T_sub=9.8666e+02  id/T=0.890  kron/T=0.852  ek/T=0.868  ek-vs-kron relF=0.0275 (null 0.0034)  sal kron-vs-id top5=0.375  ek-vs-kron top5=0.977
+>>>> Quantizing 8-th Transformer Block.... (8/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+[phase4] block 7: T_sub=1.2477e+03  id/T=0.911  kron/T=0.848  ek/T=0.868  ek-vs-kron relF=0.0252 (null 0.0024)  sal kron-vs-id top5=0.395  ek-vs-kron top5=0.975
+>>>> Quantizing 9-th Transformer Block.... (9/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+[phase4] block 8: T_sub=1.9338e+03  id/T=0.874  kron/T=0.905  ek/T=0.916  ek-vs-kron relF=0.0336 (null 0.0026)  sal kron-vs-id top5=0.427  ek-vs-kron top5=0.971
+>>>> Quantizing 10-th Transformer Block.... (10/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+[phase4] block 9: T_sub=2.5145e+03  id/T=0.971  kron/T=0.895  ek/T=0.915  ek-vs-kron relF=0.0540 (null 0.0032)  sal kron-vs-id top5=0.460  ek-vs-kron top5=0.971
+>>>> Quantizing 11-th Transformer Block.... (11/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+[phase4] block 10: T_sub=3.9543e+03  id/T=0.999  kron/T=0.929  ek/T=0.946  ek-vs-kron relF=0.0919 (null 0.0034)  sal kron-vs-id top5=0.455  ek-vs-kron top5=0.967
+>>>> Quantizing 12-th Transformer Block.... (12/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+[phase4] block 11: T_sub=2.8986e+05  id/T=0.020  kron/T=0.030  ek/T=0.032  ek-vs-kron relF=0.0754 (null 0.0027)  sal kron-vs-id top5=0.455  ek-vs-kron top5=0.945
+Quantization processing time: 797.237
+Namespace(cache_dir='cache', print_memory_usage=False, llm_path='/home/models/opt-125m', tokenizer_path='/home/models/opt-125m', eval_fp=False, attn_impl='eager', calib_data='wikitext2', nsamples=128, seqlen=2048, seed=0, w_bits=3, w_sym=False, qparam_comput='Hessian', block_v=True, act_order_col=True, act_order_row=True, row_metric_v=False, replace=0.00048828125, dump_deltas=False, dump_dir=None, phase1=False, phase1_dir='results/phase1', phase1_ncalib=96, phase1_no_attn=False, phase4=True, phase4_dir='/home/BOA/results/phase4', phase4_tokens_per_seq=128, lm_eval=False, tasks=['piqa', 'hellaswag', 'arc_easy', 'arc_challenge', 'winogrande', 'lambada_openai', 'lambada_standard', 'openbookqa', 'boolq'], lm_eval_batch_size=16, llm_name='opt-125m', llm_type='opt')
+ppl performance
+/home/BOA/utils/eval_utils.py:21: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  testloader = torch.load(cache_testloader)
+load calibration from cache/testloader_opt_wikitext2_2048.cache
+wikitext2 : 31.940
+load calibration from cache/testloader_opt_c4-new_2048.cache
+c4-new : 32.066
+zero-shot performance
+{'wikitext2': 31.94, 'c4-new': 32.066, 'time': 797.237}

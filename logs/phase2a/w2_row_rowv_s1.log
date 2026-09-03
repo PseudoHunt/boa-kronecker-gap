@@ -1,0 +1,171 @@
+/home/BOA/utils/data_utils.py:17: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  calib_data = torch.load(cache_calib_data_path)
+load calibration from cache/calib_opt_wikitext2_128_2048_1.cache
+Start quantization
+>>>> Quantizing 1-th Transformer Block.... (1/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+>>>> Quantizing 2-th Transformer Block.... (2/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+>>>> Quantizing 3-th Transformer Block.... (3/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+>>>> Quantizing 4-th Transformer Block.... (4/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+>>>> Quantizing 5-th Transformer Block.... (5/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+>>>> Quantizing 6-th Transformer Block.... (6/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+>>>> Quantizing 7-th Transformer Block.... (7/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+>>>> Quantizing 8-th Transformer Block.... (8/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+>>>> Quantizing 9-th Transformer Block.... (9/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+>>>> Quantizing 10-th Transformer Block.... (10/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+>>>> Quantizing 11-th Transformer Block.... (11/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+>>>> Quantizing 12-th Transformer Block.... (12/12)
+--------------------------------------------------
+>>> Layer: self_attn.k_proj
+--------------------------------------------------
+>>> Layer: self_attn.v_proj
+--------------------------------------------------
+>>> Layer: self_attn.q_proj
+--------------------------------------------------
+>>> Layer: self_attn.out_proj
+--------------------------------------------------
+>>> Layer: fc1
+--------------------------------------------------
+>>> Layer: fc2
+Quantization processing time: 1758.517
+Namespace(cache_dir='cache', print_memory_usage=False, llm_path='/home/models/opt-125m', tokenizer_path='/home/models/opt-125m', eval_fp=False, attn_impl='eager', calib_data='wikitext2', nsamples=128, seqlen=2048, seed=1, w_bits=2, w_sym=False, qparam_comput='Hessian', block_v=True, act_order_col=False, act_order_row=True, rsq_weights=False, rsq_col_only=False, rsq_all_layers=False, rsq_min_value=0.005, row_metric_fc1=False, row_metric_fc1_groups=48, row_metric_v=True, replace=0.00048828125, dump_deltas=False, dump_dir=None, phase1=False, phase1_dir='results/phase1', phase1_ncalib=96, phase1_no_attn=False, phase4=False, phase4_dir='results/phase4', phase4_tokens_per_seq=128, dense_arm='none', dense_blocks='0,5,11', dense_nsamples=32, dense_tokens_per_seq=256, dense_dir='results/phase3', obj_eval=False, heldout_nsamples=32, lm_eval=False, tasks=['piqa', 'hellaswag', 'arc_easy', 'arc_challenge', 'winogrande', 'lambada_openai', 'lambada_standard', 'openbookqa', 'boolq'], lm_eval_batch_size=16, llm_name='opt-125m', llm_type='opt')
+ppl performance
+/home/BOA/utils/eval_utils.py:21: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  testloader = torch.load(cache_testloader)
+load calibration from cache/testloader_opt_wikitext2_2048.cache
+wikitext2 : 83.214
+load calibration from cache/testloader_opt_c4-new_2048.cache
+c4-new : 146.242
+zero-shot performance
+{'wikitext2': 83.214, 'c4-new': 146.242, 'time': 1758.517}
