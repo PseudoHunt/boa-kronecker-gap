@@ -278,7 +278,7 @@ baseline seed 1 pending for the paired comparison.
 | rsq-col (one-sided, RSQ weights, r_min .005) | 261.06 / 347.63 | — | — | +175 |
 | boa+rsq (two-sided, RSQ-weighted H_col) | 256.98 / 370.13 | — | — | +171 |
 | dense-full, blocks 0+11, 2k tokens/head | 86.344 / 154.42 | — | — | +0.46 |
-| **dense-full, block 0 only, 16k tokens/head** | **82.727 / 145.31** | (running) | — | **−3.16** |
+| **dense-full, block 0 only, 16k tokens/head** | **82.727 / 145.31** | **82.357 / 142.71** | 82.54 / 144.01 | **−3.16, -6.53** (c4: −9.5, -25.0) |
 
 Seed spread of the baseline at W2 is 3.0 wiki2 / 12.9 c4, so single-seed
 differences below ~3 are not evidence; paired same-seed deltas are the meaningful
@@ -291,7 +291,9 @@ column.
    own-objective 0.91–0.96x, PPL a wash). With 16k tokens the same arm, changing
    *only block 0's q/k*, reaches held-out own-objective 0.66–0.74x, O_p/O_jac
    0.93–1.0x, and **−3.2 wiki2 / −6.2% c4 paired against BoA on the same
-   calibration draw**. Sec. 2.5 case 3 is the live one: `dense-jac`'s held-out
+   calibration draw** (seed 1, same protocol: 82.36 vs 88.88, i.e. -6.53;
+   held-out own-objective 0.63–0.74x again). Two paired seeds, both well outside
+   the per-seed noise of the other arms, from one block's q/k. Sec. 2.5 case 3 is the live one: `dense-jac`'s held-out
    objective tracks `dense-full`'s closely (0.93–0.94 vs 0.66–0.74 — the
    diagonal-Jacobian objective is *improved* by the full solve, so the cheap
    `sum_t (x_t x_t^T) (x) (K diag(w_t) K^T)` structure captures much of it), which
