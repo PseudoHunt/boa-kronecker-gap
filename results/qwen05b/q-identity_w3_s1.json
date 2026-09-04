@@ -1,0 +1,18 @@
+{
+  "tag": "q-identity",
+  "seed": 1,
+  "model": "Qwen/Qwen2.5-0.5B",
+  "w_bits": 3,
+  "git_commit": "de09813",
+  "rc": 0,
+  "wall_s": 4199,
+  "args": "--llm_path /home/models/qwen2.5-0.5b --w_bits 3 --block_v --qparam_comput Hessian --seed 1 --cache_dir /home/jl_fs/calib --act_order_col --act_order_row --q_identity",
+  "wikitext2": 19.878,
+  "c4-new": 38.865,
+  "quant_time_s": 4143.291,
+  "results": {
+    "wikitext2": 19.878,
+    "c4-new": 38.865,
+    "time": 4143.291
+  }
+}
