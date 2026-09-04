@@ -46,6 +46,12 @@ def get_boa_arguments(**parser_kwargs):
 
     parser.add_argument('--q_identity', action='store_true', help="Control: q_proj's row metric = I, reducing its two-sided solve to plain per-row GPTQ. Tests whether BoA's q_proj metric buys anything at all.")
 
+    parser.add_argument('--qk_identity', action='store_true', help="Control arm: H_out = I for BOTH q_proj and k_proj, still through the two-sided solver. Distinct from --q_identity, which only touches q_proj.")
+
+    parser.add_argument('--hout_length', type=int, default=0, help="Rebuild q/k H_out analytically for a TARGET context length L from the pre-RoPE key/query covariance: H_out = sum_D w_L(D) R_D C R_D^T with w_L the triangular pair weight. 0 = off (use BoA's empirical H_out).")
+
+    parser.add_argument('--save_ckpt', type=str, default=None, help='Save the quantized model state_dict here after quantization.')
+
     parser.add_argument('--replace', type=float, default=1, help='Value to be replaced for the Hessian diagonal elements corresponding to dead neurons')
 
     ## Diagnostics for the Kronecker-gap study (arXiv 2406.13474 follow-up).
@@ -99,6 +105,7 @@ def get_boa_weight_quant_infos(args):
         'row_metric_v': args.row_metric_v, 'row_metric_fc1': args.row_metric_fc1, 'row_metric_fc1_groups': args.row_metric_fc1_groups,
         'qk_quant_k': args.qk_quantK,
         'q_centered': args.q_centered, 'q_identity': args.q_identity,
+        'qk_identity': args.qk_identity, 'hout_length': args.hout_length,
         'rsq_weights': args.rsq_weights, 'rsq_col_only': args.rsq_col_only,
         'rsq_all_layers': args.rsq_all_layers, 'rsq_min_value': args.rsq_min_value,
     }

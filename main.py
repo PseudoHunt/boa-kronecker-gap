@@ -32,6 +32,12 @@ if __name__ == '__main__':
     boa_fwrd(llm, calib_data, qconfigs, boa_opts, hyperparams, args)
     process_time = round(time.time() - tick, 3)
     print(f"Quantization processing time: {process_time}")
+
+    if args.save_ckpt:
+        import os as _os, torch as _torch
+        _os.makedirs(_os.path.dirname(args.save_ckpt), exist_ok=True)
+        _torch.save({k: v.cpu() for k, v in llm.state_dict().items()}, args.save_ckpt)
+        print(f"[save_ckpt] wrote {args.save_ckpt}")
     
     # evaluate
     print(args)

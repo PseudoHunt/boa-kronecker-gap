@@ -23,6 +23,11 @@ def boa_fwrd(llm, calib_data, qconfigs, boa_opts: dict, hyperparams: dict, args)
     n_heads, n_kv_heads, head_dim = get_head_info(llm)
     rotary_emb = get_rotary_emb(llm)
     rotary_matrix = get_rotary_matrix(rotary_emb, llm.config, block_kwargs['position_ids'].cpu()) if rotary_emb is not None else None    
+    # theta_i for the analytic length-extrapolated H_out (--hout_length). inv_freq
+    # already carries any rope scaling (e.g. llama3).
+    hout_theta = (rotary_emb.inv_freq.detach().double().cpu().clone()
+                  if (rotary_emb is not None and boa_opts.get('hout_length', 0)) else None)
+
     dump_deltas = getattr(args, 'dump_deltas', False)
     if dump_deltas:
         from diag.dump_utils import default_dump_dir, write_manifest, save_delta
@@ -78,7 +83,10 @@ def boa_fwrd(llm, calib_data, qconfigs, boa_opts: dict, hyperparams: dict, args)
                         rsq=boa_opts if boa_opts.get('rsq_weights') else None,
                         row_metric_fc1=boa_opts.get('row_metric_fc1_groups', 0) if boa_opts.get('row_metric_fc1') else False,
                         q_centered=boa_opts.get('q_centered', False),
-                        q_identity=boa_opts.get('q_identity', False))
+                        q_identity=boa_opts.get('q_identity', False),
+                        qk_identity=boa_opts.get('qk_identity', False),
+                        hout_length=boa_opts.get('hout_length', 0),
+                        hout_theta=hout_theta)
 
         if phase1:
             collector.on_block_hessians(transformer_block, i, wrappers, quant_inps,
@@ -280,7 +288,7 @@ class ReluCoactivation:
 
 
 @torch.no_grad()
-def compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, quant_inps, block_kwargs, block_v, rotary_matrix, row_metric_v=False, rsq=None, row_metric_fc1=False, q_centered=False, q_identity=False):
+def compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, quant_inps, block_kwargs, block_v, rotary_matrix, row_metric_v=False, rsq=None, row_metric_fc1=False, q_centered=False, q_identity=False, qk_identity=False, hout_length=0, hout_theta=None):
     from utils.hessian_utils import CovarianceCollector, preprocess, compute_cov
 
     layers = find_layers(transformer_block)
@@ -315,6 +323,15 @@ def compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, 
                 else layers[QKV_NAMES["key"]])
         handles.append(_tgt.register_forward_hook(
             functools.partial(kmean.hook, n_heads=n_kv_heads)))
+
+    pre_cov = None
+    if hout_length:
+        pre_cov = {"q": CovarianceCollector(layers[QKV_NAMES["query"]]),
+                   "k": CovarianceCollector(layers[QKV_NAMES["key"]])}
+        handles.append(layers[QKV_NAMES["query"]].register_forward_hook(
+            functools.partial(pre_cov["q"].compute_cov_out_batch, n_heads=n_heads)))
+        handles.append(layers[QKV_NAMES["key"]].register_forward_hook(
+            functools.partial(pre_cov["k"].compute_cov_out_batch, n_heads=n_kv_heads)))
 
     swiglu_coact = None
     if row_metric_fc1:
@@ -436,6 +453,34 @@ def compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, 
         rotary_matrix = rotary_matrix.cuda()
         wrappers[QKV_NAMES["query"]].H_row = (rotary_matrix.transpose(-1, -2) @ cov_collectors['rot_out_K'].YYT @ rotary_matrix).mean(0)
         wrappers[QKV_NAMES["key"]].H_row = (rotary_matrix.transpose(-1, -2) @ cov_collectors['rot_out_Q'].YYT @ rotary_matrix).mean(0)
+
+    # --hout_length: replace q/k H_out with the analytic length-L average, built from
+    # the PRE-RoPE covariance. Phase A verified this reproduces BoA's empirical H_out
+    # at L=2048 to ~2% median, so at L=2048 this is a near no-op; at longer L only the
+    # low-frequency block pairs move.
+    if hout_length and pre_cov is not None and hout_theta is not None:
+        from diag.rope_length import avg_closed
+        n_shared = n_heads // n_kv_heads
+        C_k = pre_cov["k"].YYT.double().cpu()                       # [n_kv, d, d]
+        C_q = pre_cov["q"].YYT.double().cpu()                       # [n_heads, d, d]
+        C_q_grp = C_q.reshape(n_kv_heads, n_shared, head_dim, head_dim).mean(1)
+        dev = wrappers[QKV_NAMES["query"]].H_row.device
+        dt = wrappers[QKV_NAMES["query"]].H_row.dtype
+        Hq = torch.stack([avg_closed(C_k[h // n_shared], hout_theta, hout_length)
+                          for h in range(n_heads)]).to(device=dev, dtype=dt)
+        Hk = torch.stack([avg_closed(C_q_grp[g], hout_theta, hout_length, transpose=True)
+                          for g in range(n_kv_heads)]).to(device=dev, dtype=dt)
+        wrappers[QKV_NAMES["query"]].H_row = Hq
+        wrappers[QKV_NAMES["key"]].H_row = Hk
+        del pre_cov
+
+    # --qk_identity: control arm, H_out = I for BOTH q and k through the two-sided path.
+    if qk_identity:
+        for _nm, _n in ((QKV_NAMES["query"], n_heads), (QKV_NAMES["key"], n_kv_heads)):
+            _d = wrappers[_nm].H_row.shape[-1]
+            wrappers[_nm].H_row = torch.eye(_d, device=wrappers[_nm].H_row.device,
+                                            dtype=wrappers[_nm].H_row.dtype
+                                            ).expand(_n, _d, _d).contiguous()
 
     # --q_identity: control arm. If BoA's q_proj row metric is mostly directions the
     # softmax cannot see, replacing it with I (which reduces the two-sided solve to
