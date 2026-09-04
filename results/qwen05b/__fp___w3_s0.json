@@ -1,0 +1,18 @@
+{
+  "tag": "__fp__",
+  "seed": 0,
+  "model": "Qwen/Qwen2.5-0.5B",
+  "w_bits": null,
+  "git_commit": "f69493a",
+  "rc": 0,
+  "wall_s": null,
+  "args": "--llm_path /home/models/qwen2.5-0.5b --eval_fp",
+  "wikitext2": 13.078,
+  "c4-new": 20.407,
+  "quant_time_s": null,
+  "results": {
+    "wikitext2": 13.078,
+    "c4-new": 20.407
+  },
+  "note": "FP reproduction gate. README reference: wiki2 13.07."
+}

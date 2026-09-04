@@ -24,7 +24,7 @@ GITHASH=$(cd "$REPO" && git rev-parse --short HEAD)
 
 echo "[start] $NAME :: $ARGS"
 T0=$(date +%s)
-HF_HOME=/home/jl_fs/hf /home/venv_boa/bin/python "$REPO/main.py" $ARGS > "$LOG" 2>&1
+HF_HOME=/home/jl_fs/hf PYTHONUNBUFFERED=1 /home/venv_boa/bin/python -u "$REPO/main.py" $ARGS > "$LOG" 2>&1
 RC=$?
 T1=$(date +%s)
 WALL=$((T1-T0))
