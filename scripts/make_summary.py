@@ -6,7 +6,7 @@ the effect being measured, so unpaired means would drown it.
 """
 import glob, json, os, statistics as st
 
-RES = "/home/boa-kronecker-gap/results/qwen05b"
+RES = os.environ.get("BOA_RES_DIR", "/home/boa-kronecker-gap/results/qwen05b")
 ARMS = ["combined", "qk-quantK", "v-rowmetric"]
 METRICS = ["wikitext2", "c4-new"]
 
