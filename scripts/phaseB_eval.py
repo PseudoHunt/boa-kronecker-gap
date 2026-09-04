@@ -9,7 +9,27 @@ import torch
 import torch.nn.functional as F
 
 sys.path.insert(0, "/home/boa-kronecker-gap")
-from utils.model_utils import get_model
+from transformers import AutoModelForCausalLM
+
+
+def load_eval_model(path=None):
+    """Stock Qwen2 with SDPA + fp16 for the 32k passes.
+
+    utils.model_utils.get_model hardcodes attn_implementation='eager', which
+    materialises a [1, 14, 32768, 32768] score matrix (28 GB) and OOMs. The custom
+    modeling only adds rot_out_Q/rot_out_K nn.Identity layers so BoA can hook the
+    post-RoPE activations; they hold no parameters and are no-ops at eval, so the
+    stock model is numerically equivalent and supports SDPA.
+    """
+    m = AutoModelForCausalLM.from_pretrained(MODEL, attn_implementation="sdpa",
+                                             torch_dtype=torch.float16)
+    if path:
+        sd = torch.load(path, map_location="cpu")
+        sd = {k: v for k, v in sd.items() if "rot_out_" not in k}
+        missing, unexpected = m.load_state_dict(sd, strict=False)
+        assert not [k for k in missing if "rotary" not in k], missing[:5]
+        assert not unexpected, unexpected[:5]
+    return m
 
 MODEL = "/home/models/qwen2.5-0.5b"
 CKPT = {
@@ -27,17 +47,11 @@ OUT = "/home/boa-kronecker-gap/results/length"
 
 def build_sequences(tok):
     """32k-token sequences from PG19 test (>=32k tokens) and concatenated wikitext2."""
-    from datasets import load_from_disk, load_dataset
+    from datasets import load_dataset
     seqs = {}
-    ds = load_from_disk("/home/jl_fs/pg19_test")
-    pg = []
-    for r in ds:
-        ids = tok(r["text"], return_tensors="pt").input_ids[0]
-        if ids.numel() >= SEQLEN:
-            pg.append(ids[:SEQLEN])
-        if len(pg) >= NDOC:
-            break
-    seqs["pg19"] = pg
+    # PG19 skipped by request: the DeepMind loader was still fetching after 40 min.
+    # Only concatenated wikitext2 is used, so the long-context claim rests on one
+    # corpus -- stated rather than papered over.
     wt = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
     ids = tok("\n\n".join(wt["text"]), return_tensors="pt").input_ids[0]
     n = min(NDOC, ids.numel() // SEQLEN)
@@ -95,7 +109,7 @@ def main():
     seqs = build_sequences(tok)
     print({k: len(v) for k, v in seqs.items()}, flush=True)
 
-    llm = get_model(MODEL); llm.eval().cuda()
+    llm = load_eval_model(); llm.eval().cuda()
     W_lm = llm.lm_head.weight.data.float()
     fp_h = {ds: [hidden_states(llm, s) for s in ss] for ds, ss in seqs.items()}
     print("FP hidden states cached", flush=True)
@@ -114,8 +128,8 @@ def main():
         if not os.path.exists(path):
             print(f"[skip] {name}: no checkpoint", flush=True); continue
         t0 = time.time()
-        sd = torch.load(path, map_location="cpu")
-        llm.load_state_dict(sd, strict=True); llm.eval().cuda(); del sd
+        del llm; torch.cuda.empty_cache()
+        llm = load_eval_model(path); llm.eval().cuda()
         arm = {}
         for ds in seqs:
             acc = {}
@@ -128,7 +142,7 @@ def main():
                 "kl": v["kl"] / max(v["n"], 1), "n": v["n"]} for b, v in acc.items()}
         res[name] = arm
         print(f"[{name}] {time.time()-t0:.0f}s "
-              + " ".join(f"{k}:{v['ratio_to_fp']:.4f}" for k, v in arm['pg19'].items()), flush=True)
+              + " ".join(f"{k}:{v['ratio_to_fp']:.4f}" for k, v in arm['wikitext2'].items()), flush=True)
         json.dump(res, open(os.path.join(OUT, "phaseB_long.json"), "w"), indent=2)
     json.dump(res, open(os.path.join(OUT, "phaseB_long.json"), "w"), indent=2)
     print("wrote phaseB_long.json")

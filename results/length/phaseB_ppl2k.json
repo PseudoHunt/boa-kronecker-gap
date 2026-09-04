@@ -1,0 +1,22 @@
+{
+  "FP": {
+    "wikitext2": 13.078,
+    "c4-new": 20.407
+  },
+  "two-sided-2048": {
+    "wikitext2": 19.717,
+    "c4-new": 39.072
+  },
+  "one-sided": {
+    "wikitext2": 20.345,
+    "c4-new": 40.827
+  },
+  "two-sided-Lext": {
+    "wikitext2": 19.797,
+    "c4-new": 39.022
+  },
+  "two-sided-longcalib": {
+    "wikitext2": 19.614,
+    "c4-new": 38.742
+  }
+}
