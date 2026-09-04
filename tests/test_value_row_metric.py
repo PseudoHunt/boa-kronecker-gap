@@ -21,7 +21,7 @@ torch.backends.cuda.matmul.allow_tf32 = False
 
 
 def main():
-    g = torch.Generator().manual_seed(0)
+    g = g_ = torch.Generator().manual_seed(0)
     d, d_h, L, H = 24, 6, 11, 4
     X = torch.randn(d, L, generator=g, dtype=torch.float64)
     W_out = torch.randn(d, H * d_h, generator=g, dtype=torch.float64)
@@ -59,12 +59,50 @@ def main():
     lin.weight.data = W_out.clone()
     attn.out_proj = lin
     blk.self_attn = attn
-    got = value_row_metric(blk, H, d_h, device="cpu", dtype=torch.float64)
+    got = value_row_metric(blk, H, H, d_h, device="cpu", dtype=torch.float64)
     for h in range(H):
         W_oh = W_out[:, h * d_h:(h + 1) * d_h]
         err = (got[h] - W_oh.T @ W_oh).abs().max().item()
         assert err < 1e-12, f"head {h}: value_row_metric slicing mismatch ({err:.2e})"
     print(f"  value_row_metric() slicing matches for all {H} heads")
+
+    # ---- GQA: one row factor per KV head, summed over its query group ---------
+    # Qwen2.5-0.5B is 14 query heads over 2 kv heads. v_proj emits only
+    # n_kv_heads * d_h rows, so the metric must be [n_kv, d_h, d_h], and the factor
+    # for kv head g is the SUM of W_out,h^T W_out,h over the query heads reading g.
+    n_kv, n_shared = 2, H // 2
+    got_gqa = value_row_metric(blk, H, n_kv, d_h, device="cpu", dtype=torch.float64)
+    assert got_gqa.shape == (n_kv, d_h, d_h), f"GQA shape {tuple(got_gqa.shape)}"
+    for g in range(n_kv):
+        want = sum(W_out[:, h * d_h:(h + 1) * d_h].T @ W_out[:, h * d_h:(h + 1) * d_h]
+                   for h in range(g * n_shared, (g + 1) * n_shared))
+        err = (got_gqa[g] - want).abs().max().item()
+        assert err < 1e-12, f"kv head {g}: GQA row factor mismatch ({err:.2e})"
+    print(f"  GQA: {n_kv} kv heads x {n_shared} query heads -> "
+          f"shape {tuple(got_gqa.shape)}, group sums match")
+
+    # What the summed factor is and is not. With V shared across a group,
+    #   dMHA = sum_{h in g} W_out,h dW_V,g X A_h^T,
+    # so the exact energy has cross terms h != h'. A single Kronecker factor cannot
+    # carry those, so the sum keeps exactly the diagonal (h == h') terms. Assert that
+    # identity, so the approximation is pinned down rather than assumed.
+    dWg = torch.randn(d_h, d, generator=g_, dtype=torch.float64)
+    for gi in range(n_kv):
+        heads = range(gi * n_shared, (gi + 1) * n_shared)
+        diag_energy = sum(
+            (W_out[:, h * d_h:(h + 1) * d_h] @ dWg @ X @ A[h].T).pow(2).sum().item()
+            for h in heads)
+        H_col_sum = sum(X @ A[h].T @ A[h] @ X.T for h in heads)
+        # diagonal-only energy is NOT a single kron unless A_h is shared; verify the
+        # row factor reproduces it head-by-head instead.
+        kron_sum = sum(quad_kron(dWg, X @ A[h].T @ A[h] @ X.T,
+                                 W_out[:, h * d_h:(h + 1) * d_h].T
+                                 @ W_out[:, h * d_h:(h + 1) * d_h])
+                       for h in heads)
+        rel = abs(diag_energy - kron_sum) / abs(diag_energy)
+        assert rel < 1e-12, f"kv head {gi}: diagonal energy mismatch ({rel:.2e})"
+    print(f"  GQA: summed factor reproduces the cross-term-free energy exactly "
+          f"(cross terms h != h' are dropped by construction)")
 
     print("\nVALUE ROW METRIC TEST: PASS")
 

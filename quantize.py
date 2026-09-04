@@ -88,7 +88,19 @@ def boa_fwrd(llm, calib_data, qconfigs, boa_opts: dict, hyperparams: dict, args)
 
         # quantize
         need_W_orig = dump_deltas or phase1 or phase4 or dense
-        for name in fp_layers:
+
+        # --qk_quantK: quantize the key projection first so q_proj's row metric can be
+        # rebuilt against the quantized K (see requantized_key_row_metric).
+        qk_quant_k = boa_opts.get('qk_quant_k', False)
+        layer_order = list(fp_layers)
+        if qk_quant_k:
+            q_nm, k_nm = QKV_NAMES["query"], QKV_NAMES["key"]
+            if q_nm in layer_order and k_nm in layer_order \
+                    and layer_order.index(k_nm) > layer_order.index(q_nm):
+                layer_order.remove(k_nm)
+                layer_order.insert(layer_order.index(q_nm), k_nm)
+
+        for name in layer_order:
             print('-' * 50)
             print(f">>> Layer: {name}")
             W_orig = fp_layers[name].weight.data.clone() if need_W_orig else None
@@ -102,6 +114,11 @@ def boa_fwrd(llm, calib_data, qconfigs, boa_opts: dict, hyperparams: dict, args)
                 collector.on_layer_quantized(i, name, W_orig, fp_layers[name].weight.data)
             if phase4:
                 collector4.on_layer_quantized(i, name, W_orig, fp_layers[name].weight.data)
+            if qk_quant_k and name == QKV_NAMES["key"]:
+                wrappers[QKV_NAMES["query"]].H_row = requantized_key_row_metric(
+                    transformer_block, n_heads, n_kv_heads, head_dim,
+                    quant_inps, block_kwargs, rotary_matrix)
+
             del W_orig
             wrappers[name].free()
 
@@ -143,7 +160,56 @@ def get_rotary_matrix(rotary_emb, config, position_ids):
     return rotary_matrix
 
 
-def value_row_metric(transformer_block, n_heads, head_dim, device, dtype=torch.float32):
+@torch.no_grad()
+def requantized_key_row_metric(transformer_block, n_heads, n_kv_heads, head_dim,
+                               quant_inps, block_kwargs, rotary_matrix):
+    """q_proj's output metric, re-measured through the ALREADY-QUANTIZED k_proj.
+
+    BoA builds q_proj's row metric from E[K K^T] on the FP key projection, but at
+    inference the logits are formed against the quantized K. --qk_quantK closes that
+    mismatch: k_proj is quantized first, then this re-measures the post-RoPE key
+    covariance with the quantized k_proj in place and hands it back as q_proj's
+    H_row. Everything else (H_col, the solver, k_proj's own metric) is untouched.
+
+    Costs one extra block forward over the calibration set; attentions are not
+    requested, so it is cheaper than the pass in compute_Hessian.
+
+    Returns [n_heads, head_dim, head_dim].
+    """
+    from utils.hessian_utils import CovarianceCollector
+
+    target = (transformer_block.self_attn.rot_out_K if rotary_matrix is not None
+              else find_layers(transformer_block)[QKV_NAMES["key"]])
+    coll = CovarianceCollector(target)
+    handle = target.register_forward_hook(
+        functools.partial(coll.compute_cov_out_batch, n_heads=n_kv_heads))
+
+    kw = {k: v for k, v in block_kwargs.items() if k != 'output_attentions'}
+    for j in range(len(quant_inps)):
+        transformer_block(quant_inps[j].unsqueeze(0), **kw)
+    handle.remove()
+
+    YYT = coll.YYT
+    if n_kv_heads != n_heads:                       # expand kv heads to query heads
+        n_shared = n_heads // n_kv_heads
+        YYT = YYT[:, None, :, :].expand(-1, n_shared, -1, -1).reshape(n_heads, head_dim, head_dim)
+    del coll
+    if rotary_matrix is None:
+        return YYT
+    R = rotary_matrix.cuda()
+    return (R.transpose(-1, -2) @ YYT @ R).mean(0)
+
+
+def get_out_proj(transformer_block):
+    """Attention output projection: OPT names it out_proj, Llama/Qwen name it o_proj."""
+    attn = transformer_block.self_attn
+    for nm in ("out_proj", "o_proj"):
+        if hasattr(attn, nm):
+            return getattr(attn, nm)
+    raise AttributeError(f"no output projection on {type(attn).__name__}")
+
+
+def value_row_metric(transformer_block, n_heads, n_kv_heads, head_dim, device, dtype=torch.float32):
     """Row (output-side) Hessian factor for the value projection -- paper eq. (9).
 
         H(w_V,h) = 2 X A_h^T A_h X^T  (x)  W_out,h^T W_out,h
@@ -156,13 +222,21 @@ def value_row_metric(transformer_block, n_heads, head_dim, device, dtype=torch.f
     with no approximation. W_out,h is deterministic, so the Kronecker form is exact
     too; no expectation has to factorise.
 
-    Returns [n_heads, head_dim, head_dim].
+    Under GQA (n_kv_heads < n_heads) v_proj emits only n_kv_heads * head_dim rows,
+    and each kv head g is read by n_shared = n_heads // n_kv_heads query heads. With
+    the other heads held fixed, dMHA = sum_h W_out,h dV_{g(h)} A_h^T, so the row
+    factor for kv head g is the SUM of W_out,h^T W_out,h over the query heads in its
+    group -- not a mean, and not one factor per query head. (For MHA n_shared = 1 and
+    this reduces to the original per-head expression, so the OPT path is unchanged.)
+
+    Returns [n_kv_heads, head_dim, head_dim].
     """
-    W_o = transformer_block.self_attn.out_proj.weight.data.to(device=device, dtype=dtype)
-    H_row = torch.empty(n_heads, head_dim, head_dim, device=device, dtype=dtype)
+    W_o = get_out_proj(transformer_block).weight.data.to(device=device, dtype=dtype)
+    n_shared = n_heads // n_kv_heads
+    H_row = torch.zeros(n_kv_heads, head_dim, head_dim, device=device, dtype=dtype)
     for h in range(n_heads):
         W_oh = W_o[:, h * head_dim:(h + 1) * head_dim]        # [d, d_h]
-        H_row[h] = W_oh.transpose(-1, -2) @ W_oh
+        H_row[h // n_shared] += W_oh.transpose(-1, -2) @ W_oh
     return H_row
 
 
@@ -326,7 +400,7 @@ def compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, 
     # byte-identical to upstream.
     if row_metric_v:
         wrappers[QKV_NAMES['value']].H_row = value_row_metric(
-            transformer_block, n_heads, head_dim,
+            transformer_block, n_heads, n_kv_heads, head_dim,
             device=wrappers[QKV_NAMES['value']].H_col.device)
 
     del cov_collectors

@@ -40,6 +40,8 @@ def get_boa_arguments(**parser_kwargs):
     parser.add_argument('--row_metric_fc1_groups', type=int, default=48, help='Block-diagonal approximation of the fc1 row metric: number of contiguous row groups (48 -> 64-row groups, same per-group cost as an attention head).')
     parser.add_argument('--row_metric_v', action='store_true', help="Use the paper's exact value-projection row Hessian W_out,h^T W_out,h (eq. 9), which the released code omits. Routes v_proj through the two-sided boa() solver instead of gptq().")
 
+    parser.add_argument('--qk_quantK', action='store_true', help="Quantize k_proj BEFORE q_proj and rebuild q_proj's output metric from the QUANTIZED key's post-RoPE covariance. BoA measures E[K K^T] on the FP key, but inference forms logits against the quantized K; this closes that mismatch.")
+
     parser.add_argument('--replace', type=float, default=1, help='Value to be replaced for the Hessian diagonal elements corresponding to dead neurons')
 
     ## Diagnostics for the Kronecker-gap study (arXiv 2406.13474 follow-up).
@@ -91,6 +93,7 @@ def get_boa_weight_quant_infos(args):
         'act_order_col': args.act_order_col, 
         'act_order_row': args.act_order_row, 
         'row_metric_v': args.row_metric_v, 'row_metric_fc1': args.row_metric_fc1, 'row_metric_fc1_groups': args.row_metric_fc1_groups,
+        'qk_quant_k': args.qk_quantK,
         'rsq_weights': args.rsq_weights, 'rsq_col_only': args.rsq_col_only,
         'rsq_all_layers': args.rsq_all_layers, 'rsq_min_value': args.rsq_min_value,
     }
