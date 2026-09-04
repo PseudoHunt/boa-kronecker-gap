@@ -47,11 +47,33 @@ OUT = "/home/boa-kronecker-gap/results/length"
 
 def build_sequences(tok):
     """32k-token sequences from PG19 test (>=32k tokens) and concatenated wikitext2."""
-    from datasets import load_dataset
+    from datasets import load_dataset, load_from_disk
+    import os as _os
     seqs = {}
-    # PG19 skipped by request: the DeepMind loader was still fetching after 40 min.
-    # Only concatenated wikitext2 is used, so the long-context claim rests on one
-    # corpus -- stated rather than papered over.
+    # PG19 test via the emozilla parquet mirror (the DeepMind loader script is slow).
+    if _os.path.isdir("/home/jl_fs/pg19_emozilla"):
+        ds = load_from_disk("/home/jl_fs/pg19_emozilla")
+        col = "text" if "text" in ds.column_names else ds.column_names[0]
+        pg = []
+        for r in ds:
+            ids = tok(r[col], return_tensors="pt").input_ids[0]
+            if ids.numel() >= SEQLEN:
+                pg.append(ids[:SEQLEN])
+            if len(pg) >= NDOC:
+                break
+        seqs["pg19"] = pg
+    if _os.path.isdir("/home/jl_fs/proofpile_test"):
+        ds = load_from_disk("/home/jl_fs/proofpile_test")
+        col = "text" if "text" in ds.column_names else ds.column_names[0]
+        pp = []
+        for r in ds:
+            ids = tok(r[col], return_tensors="pt").input_ids[0]
+            if ids.numel() >= SEQLEN:
+                pp.append(ids[:SEQLEN])
+            if len(pp) >= NDOC:
+                break
+        if pp:
+            seqs["proofpile"] = pp
     wt = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
     ids = tok("\n\n".join(wt["text"]), return_tensors="pt").input_ids[0]
     n = min(NDOC, ids.numel() // SEQLEN)
@@ -142,9 +164,9 @@ def main():
                 "kl": v["kl"] / max(v["n"], 1), "n": v["n"]} for b, v in acc.items()}
         res[name] = arm
         print(f"[{name}] {time.time()-t0:.0f}s "
-              + " ".join(f"{k}:{v['ratio_to_fp']:.4f}" for k, v in arm['wikitext2'].items()), flush=True)
-        json.dump(res, open(os.path.join(OUT, "phaseB_long.json"), "w"), indent=2)
-    json.dump(res, open(os.path.join(OUT, "phaseB_long.json"), "w"), indent=2)
+              + " ".join(f"{k}:{v['ratio_to_fp']:.4f}" for k, v in arm[list(arm)[0]].items()), flush=True)
+        json.dump(res, open(os.path.join(OUT, "phaseB_pg19.json"), "w"), indent=2)
+    json.dump(res, open(os.path.join(OUT, "phaseB_pg19.json"), "w"), indent=2)
     print("wrote phaseB_long.json")
 
 
