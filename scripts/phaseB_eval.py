@@ -32,7 +32,7 @@ def load_eval_model(path=None):
     return m
 
 MODEL = "/home/models/qwen2.5-0.5b"
-CKPT = {
+CKPT = json.loads(os.environ["BOA_CKPT"]) if os.environ.get("BOA_CKPT") else {
     "two-sided-2048": "/home/jl_fs/ckpt/phaseB/twosided2048.pt",
     "one-sided": "/home/jl_fs/ckpt/phaseB/onesided.pt",
     "two-sided-Lext": "/home/jl_fs/ckpt/phaseB/lext32k.pt",
@@ -165,8 +165,8 @@ def main():
         res[name] = arm
         print(f"[{name}] {time.time()-t0:.0f}s "
               + " ".join(f"{k}:{v['ratio_to_fp']:.4f}" for k, v in arm[list(arm)[0]].items()), flush=True)
-        json.dump(res, open(os.path.join(OUT, "phaseB_pg19.json"), "w"), indent=2)
-    json.dump(res, open(os.path.join(OUT, "phaseB_pg19.json"), "w"), indent=2)
+        json.dump(res, open(os.path.join(OUT, os.environ.get("BOA_OUTJSON", "phaseB_pg19.json")), "w"), indent=2)
+    json.dump(res, open(os.path.join(OUT, os.environ.get("BOA_OUTJSON", "phaseB_pg19.json")), "w"), indent=2)
     print("wrote phaseB_long.json")
 
 
