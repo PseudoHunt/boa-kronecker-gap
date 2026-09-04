@@ -66,7 +66,7 @@ cp -f "$OUT" "$MIRROR/" 2>/dev/null
     WIKI=$(/home/venv_boa/bin/python -c "import json;print(json.load(open('$OUT'))['wikitext2'])" 2>/dev/null)
     git -c user.name="Claude Opus 5 (1M context)" -c user.email="noreply@anthropic.com" \
         commit -q -m "$(printf '%s s%s: wiki2 %s\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01WLrtcYZdtuyRLQkUWr7f6F' "$TAG" "$SEED" "$WIKI")" >/dev/null 2>&1
-    git pull --rebase -q origin main >/dev/null 2>&1
+    git pull --rebase --autostash -q origin main >/dev/null 2>&1
     if git push -q origin main >/dev/null 2>&1; then echo "[git] pushed $NAME"; break; fi
     echo "[git] push attempt $i failed for $NAME"; sleep $((i*5))
   done
