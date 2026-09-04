@@ -14,6 +14,9 @@ All runs: `--w_bits 3 --block_v --qparam_comput Hessian`, 128x2048 wikitext2 cal
 
 | act-order | wiki2 | c4-new | wall (s) |
 |---|---|---|---|
+| ao_none | 22.911 | 44.309 | 7871 |
+| ao_col | 20.293 | 39.612 | 7871 |
+| ao_row | 21.808 | 40.443 | 7871 |
 | ao_both | 19.717 | 39.072 | 5064 |
 
 ## Stage C — all runs
@@ -76,38 +79,48 @@ the Python row loop (64 row steps x ~896 GPTQ column steps per two-sided
 layer), not by Hessian collection. Runs are single-threaded, ~1.3-1.9 GB GPU
 each, so ~11 fit concurrently on 16 vCPUs without contention.
 
-## Stage D (softmax-gap diagnostic): NOT RUN
+## Stage D — the softmax gap (RUN)
 
-`diag/phase1_runner.py` is OPT-shaped and does not support this model: it
-indexes both the q and k row metrics by `n_heads` (under GQA the k metric has
-`n_kv_heads` entries, so it raises), and it reconstructs Q/K as `W x + b` with
-no RoPE, so the attention probabilities it derives would be wrong for Qwen.
-A correct port also has to keep `R` in BoA's pre-RoPE (back-rotated) basis
-while computing `A` from post-RoPE Q/K -- a convention split that is easy to
-get plausibly but subtly wrong, which would produce a credible-looking gap
-number driving a paper/no-paper call. It was left undone rather than guessed.
+FP model, 16 sequences x 2048 tokens, all 24 blocks, split-half
+corrected. Implementation validated against this repo's OPT-125m phase 1 numbers
+(see `tests/test_softmax_gap.py`): q_proj G12 0.1609 vs 0.1616, k_proj G123p
+0.1037 vs 0.1077, k_proj G123j 0.1151 vs 0.1218.
 
-### The number Stage D has to produce, and what to compare it to
+| layer | variant | mean | median | p25 | p75 | max |
+|---|---|---|---|---|---|---|
+| q_proj | G1 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| q_proj | G12 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| q_proj | G123p | 0.1107 | 0.1116 | 0.0705 | 0.1409 | 0.2465 |
+| q_proj | G123j | 0.1106 | 0.1130 | 0.0694 | 0.1372 | 0.2270 |
+| k_proj | G1 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| k_proj | G12 | 0.0008 | 0.0000 | 0.0000 | 0.0000 | 0.0183 |
+| k_proj | G123p | 0.2626 | 0.1993 | 0.1605 | 0.2799 | 0.9429 |
+| k_proj | G123j | 0.2580 | 0.1985 | 0.1689 | 0.2680 | 0.8666 |
 
-From this repo's existing OPT-125m phase 1 run (`results/phase1/summary.json`,
-24 block x layer entries), the relevant reference values are:
+**Qwen G123j pooled over q+k: mean 0.1843, median 0.1562** (split-half noise floor 0.032, so the signal is real).
+**OPT-125m reference: mean 0.2306.** So the Qwen softmax gap is NOT larger than OPT's -- it is smaller.
 
-| field | what it measures | OPT-125m mean | range |
-|---|---|---|---|
-| `G1_rel_fro` | pure separability (Kronecker) gap | 0.0005 | 0.0002 - 0.0020 |
-| `G12_rel_fro` | + causal mask | 0.2041 | 0.0585 - 0.3092 |
-| `G123p_rel_fro` | + attention-probability weighting | 0.2944 | 0.0810 - 0.4485 |
-| `G123j_rel_fro` | + softmax-Jacobian weighting (**the softmax gap**) | **0.2306** | 0.0953 - 0.3402 |
+Two structural notes. `G1` is ~0 for every block: separability itself costs
+nothing, exactly as on OPT (0.0005). `G12` is also ~0, which DIFFERS from OPT
+(0.204) -- causal masking alone does not break separability here; on this model
+essentially the entire discrepancy is the softmax weighting.
 
-So 'small (<= OPT's)' in section 7 means a Qwen `G123j_rel_fro` at or below
-~0.23; materially above that is the 'large gap' branch. Note the contrast that
-makes this the interesting quantity: the pure Kronecker gap is ~0.0005 (nil),
-so essentially all of the discrepancy comes from the softmax weighting, not
-from separability.
+## Verdict — section 7, both inputs now in
 
-This matters more than its 'optional' billing suggests: if the arms come back
-null, the bias result above says the null is uninformative about the
-hypothesis, and section 7's branch turns entirely on whether the softmax gap
-is small (stop) or large (the paper hinges on the softmax solver). **Build this
-first next session, ahead of any Llama work.**
+`combined` vs `boa` is **null** (wiki2 mean -0.043, std 0.090, 2 up / 1 down), and the softmax gap is **0.184 mean / 0.156 median vs OPT's 0.231** -- i.e. small, at or below OPT's.
+
+Section 7's table maps null + small gap to: **no paper on this line. Stop spending.**
+
+Two independent lines of evidence agree, which is what makes this a stop rather
+than a 'two more seeds':
+
+1. The arm could not have acted on this model: ~96% of the Frobenius mass of the
+   q/k row metric is the projection bias, which weight quantization never touches.
+2. The quantity the arm exists to exploit -- the term BoA's objective drops -- is
+   no larger here than on OPT, where it was already judged not worth pursuing.
+
+What is NOT ruled out: the k_proj gap is heavy-tailed (median 0.199, max 0.867 at
+block 13), so a few blocks do carry a large softmax gap. If anything survives this
+line it is per-block, not global -- and it would need a model whose q/k metric is
+not bias-dominated to be testable at all. Qwen2.5-0.5B cannot answer it.
 
