@@ -1,0 +1,18 @@
+{
+  "tag": "combined",
+  "seed": 0,
+  "model": "Qwen/Qwen2.5-0.5B",
+  "w_bits": 3,
+  "git_commit": "8550ede",
+  "rc": 0,
+  "wall_s": 6065,
+  "args": "--llm_path /home/models/qwen2.5-0.5b --w_bits 3 --block_v --qparam_comput Hessian --seed 0 --cache_dir /home/jl_fs/calib --act_order_col --act_order_row --qk_quantK --row_metric_v",
+  "wikitext2": 19.778,
+  "c4-new": 38.678,
+  "quant_time_s": 5966.683,
+  "results": {
+    "wikitext2": 19.778,
+    "c4-new": 38.678,
+    "time": 5966.683
+  }
+}

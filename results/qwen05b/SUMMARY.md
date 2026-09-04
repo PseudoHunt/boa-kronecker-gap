@@ -21,11 +21,18 @@ All runs: `--w_bits 3 --block_v --qparam_comput Hessian`, 128x2048 wikitext2 cal
 | arm | seed | wiki2 | c4-new | wall (s) |
 |---|---|---|---|---|
 | boa | 0 | 19.717 | 39.072 | 5064 |
+| boa | 1 | 19.993 | 38.698 | 5149 |
+| boa | 2 | 19.825 | 39.132 | 5149 |
+| combined | 0 | 19.778 | 38.678 | 6065 |
+| combined | 1 | 19.893 | 39.895 | 6065 |
+| combined | 2 | 19.736 | 39.935 | 6065 |
 
 ## Paired deltas vs same-seed `boa` (negative = better)
 
 | arm | metric | n | per-seed deltas | mean | std | all improve? | mean > 2*std? |
 |---|---|---|---|---|---|---|---|
+| combined | wikitext2 | 3 | s0: +0.061, s1: -0.100, s2: -0.089 | -0.043 | 0.090 | no | no |
+| combined | c4-new | 3 | s0: -0.394, s1: +1.197, s2: +0.803 | +0.535 | 0.829 | no | no |
 
 ## Why a null on the qk arms is expected here
 
@@ -48,7 +55,7 @@ decomposition -- the cross terms are not orthogonal, so shares can sum past 1.)
 
 ## Verdict (runbook section 7)
 
-**Incomplete** — `combined` has 0/3 paired seeds. No verdict; the decision table needs all three.
+**Null on `combined`.** Per the runbook the next branch is set by the Stage D softmax gap: small gap (<= OPT's) => no paper on this line, stop spending; large gap => the paper hinges on the softmax solver.
 
 ## Cost (measured, not estimated)
 
