@@ -1,0 +1,18 @@
+{
+  "tag": "ao_both",
+  "seed": 0,
+  "model": "Qwen/Qwen2.5-0.5B",
+  "w_bits": 3,
+  "git_commit": "ba54673",
+  "rc": 0,
+  "wall_s": 5064,
+  "args": "--llm_path /home/models/qwen2.5-0.5b --w_bits 3 --block_v --qparam_comput Hessian --seed 0 --cache_dir /home/jl_fs/calib --act_order_col --act_order_row",
+  "wikitext2": 19.717,
+  "c4-new": 39.072,
+  "quant_time_s": 5007.07,
+  "results": {
+    "wikitext2": 19.717,
+    "c4-new": 39.072,
+    "time": 5007.07
+  }
+}
