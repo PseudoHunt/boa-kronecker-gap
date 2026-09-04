@@ -1,0 +1,18 @@
+{
+  "tag": "phaseB-lext32k",
+  "seed": 0,
+  "model": "Qwen/Qwen2.5-0.5B",
+  "w_bits": 3,
+  "git_commit": "7d2d15e",
+  "rc": 0,
+  "wall_s": 2145,
+  "args": "--llm_path /home/models/qwen2.5-0.5b --w_bits 3 --block_v --qparam_comput Hessian --seed 0 --cache_dir /home/jl_fs/calib --act_order_col --act_order_row --hout_length 32768 --save_ckpt /home/jl_fs/ckpt/phaseB/lext32k.pt",
+  "wikitext2": 19.797,
+  "c4-new": 39.022,
+  "quant_time_s": 2047.434,
+  "results": {
+    "wikitext2": 19.797,
+    "c4-new": 39.022,
+    "time": 2047.434
+  }
+}
