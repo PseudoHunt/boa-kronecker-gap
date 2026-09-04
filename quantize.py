@@ -316,9 +316,19 @@ def compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, 
         handles.append(_tgt.register_forward_hook(
             functools.partial(kmean.hook, n_heads=n_kv_heads)))
 
+    swiglu_coact = None
     if row_metric_fc1:
-        coact = ReluCoactivation(layers['fc1'].out_features, layers['fc1'].weight.device)
-        handles.append(layers['fc1'].register_forward_hook(coact.hook))
+        from diag.swiglu_metric import GATE, UP, DOWN, SwiGLUCoactivation
+        if GATE in layers:                      # SwiGLU (Qwen/Llama)
+            _dff = layers[UP].out_features
+            _grp = row_metric_fc1 if isinstance(row_metric_fc1, int) and row_metric_fc1 > 1 else 76
+            swiglu_coact = SwiGLUCoactivation(_dff, _grp, layers[UP].weight.device)
+            handles.append(layers[GATE].register_forward_hook(swiglu_coact.hook_gate))
+            handles.append(layers[UP].register_forward_hook(swiglu_coact.hook_up))
+            handles.append(layers[DOWN].register_forward_hook(swiglu_coact.hook_down))
+        else:                                   # ReLU fc1 (OPT), unchanged
+            coact = ReluCoactivation(layers['fc1'].out_features, layers['fc1'].weight.device)
+            handles.append(layers['fc1'].register_forward_hook(coact.hook))
 
     if block_v:
         block_kwargs = block_kwargs.copy()
@@ -447,8 +457,21 @@ def compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, 
             if rsq.get('rsq_col_only') and name in [QKV_NAMES["query"], QKV_NAMES["key"]]:
                 wrapper.H_row = None
 
+    # SwiGLU gate-aware row metric for up_proj and gate_proj; off by default.
+    # H_row = W_down^T W_down (hadamard) E[d d^T], exact elementwise, with
+    # d = phi(g) for up_proj and d = phi'(g) * u for gate_proj. down_proj stays on
+    # the released one-sided path.
+    if swiglu_coact is not None:
+        from diag.swiglu_metric import GATE, UP, DOWN, grouped_row_metric
+        _Wd = layers[DOWN].weight.data.float()                     # [hidden, d_ff]
+        for _key, _nm in (("up", UP), ("gate", GATE)):
+            wrappers[_nm].H_row = grouped_row_metric(
+                _Wd, swiglu_coact.C[_key], swiglu_coact.n, swiglu_coact.groups
+            ).to(wrappers[_nm].H_col.dtype)
+        swiglu_coact.C.clear()   # free the block-diagonal accumulators
+
     # Phase 4: MLP-aware row metric for fc1 (ReLU-gated); off by default.
-    if row_metric_fc1:
+    if row_metric_fc1 and swiglu_coact is None and 'fc2' in layers:
         W2 = layers['fc2'].weight.data.float()
         H_row_fc1 = (W2.T @ W2) * (coact.C / max(coact.n, 1))    # [d_ff, d_ff]
         # boa() eliminates rows sequentially per "head": a single 3072-row head costs
