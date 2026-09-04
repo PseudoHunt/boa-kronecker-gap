@@ -42,6 +42,10 @@ def get_boa_arguments(**parser_kwargs):
 
     parser.add_argument('--qk_quantK', action='store_true', help="Quantize k_proj BEFORE q_proj and rebuild q_proj's output metric from the QUANTIZED key's post-RoPE covariance. BoA measures E[K K^T] on the FP key, but inference forms logits against the quantized K; this closes that mismatch.")
 
+    parser.add_argument('--q_centered', action='store_true', help="q_proj's row metric = CENTRED post-RoPE key covariance (second moment minus the mean outer product), back-rotated as usual. The exact softmax Jacobian is Cov_p(k), so a constant offset in k -- mostly the k_proj bias -- is invisible to attention; BoA's uncentred metric spends its budget there.")
+
+    parser.add_argument('--q_identity', action='store_true', help="Control: q_proj's row metric = I, reducing its two-sided solve to plain per-row GPTQ. Tests whether BoA's q_proj metric buys anything at all.")
+
     parser.add_argument('--replace', type=float, default=1, help='Value to be replaced for the Hessian diagonal elements corresponding to dead neurons')
 
     ## Diagnostics for the Kronecker-gap study (arXiv 2406.13474 follow-up).
@@ -94,6 +98,7 @@ def get_boa_weight_quant_infos(args):
         'act_order_row': args.act_order_row, 
         'row_metric_v': args.row_metric_v, 'row_metric_fc1': args.row_metric_fc1, 'row_metric_fc1_groups': args.row_metric_fc1_groups,
         'qk_quant_k': args.qk_quantK,
+        'q_centered': args.q_centered, 'q_identity': args.q_identity,
         'rsq_weights': args.rsq_weights, 'rsq_col_only': args.rsq_col_only,
         'rsq_all_layers': args.rsq_all_layers, 'rsq_min_value': args.rsq_min_value,
     }

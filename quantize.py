@@ -76,7 +76,9 @@ def boa_fwrd(llm, calib_data, qconfigs, boa_opts: dict, hyperparams: dict, args)
         compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, quant_inps, block_kwargs, block_v, rotary_matrix,
                         row_metric_v=boa_opts.get('row_metric_v', False),
                         rsq=boa_opts if boa_opts.get('rsq_weights') else None,
-                        row_metric_fc1=boa_opts.get('row_metric_fc1_groups', 0) if boa_opts.get('row_metric_fc1') else False)
+                        row_metric_fc1=boa_opts.get('row_metric_fc1_groups', 0) if boa_opts.get('row_metric_fc1') else False,
+                        q_centered=boa_opts.get('q_centered', False),
+                        q_identity=boa_opts.get('q_identity', False))
 
         if phase1:
             collector.on_block_hessians(transformer_block, i, wrappers, quant_inps,
@@ -240,6 +242,26 @@ def value_row_metric(transformer_block, n_heads, n_kv_heads, head_dim, device, d
     return H_row
 
 
+class MeanCollector:
+    """Running mean of a layer's per-head output, matching CovarianceCollector's
+    preprocessing. Needed to CENTRE the key second moment: compute_cov accumulates
+    YYT = 2 * E[k k^T], so the centred form is YYT - 2 * mu mu^T."""
+
+    def __init__(self):
+        self.S = None
+        self.n = 0
+
+    def hook(self, _, inp, out, n_heads=None):
+        from utils.hessian_utils import preprocess
+        d = preprocess(out, n_heads)                    # [H, d_h, BL]
+        s = d.double().sum(-1)
+        self.S = s if self.S is None else self.S + s
+        self.n += d.shape[-1]
+
+    def mean(self):
+        return self.S / max(self.n, 1)
+
+
 class ReluCoactivation:
     """Accumulates E_t[d_t d_t^T] from the ReLU mask d_t = 1[fc1(x_t) > 0] via a hook
     on fc1's OUTPUT (pre-activation, bias included). Phase 4 row metric for fc1:
@@ -258,7 +280,7 @@ class ReluCoactivation:
 
 
 @torch.no_grad()
-def compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, quant_inps, block_kwargs, block_v, rotary_matrix, row_metric_v=False, rsq=None, row_metric_fc1=False):
+def compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, quant_inps, block_kwargs, block_v, rotary_matrix, row_metric_v=False, rsq=None, row_metric_fc1=False, q_centered=False, q_identity=False):
     from utils.hessian_utils import CovarianceCollector, preprocess, compute_cov
 
     layers = find_layers(transformer_block)
@@ -286,6 +308,13 @@ def compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, 
     else:
         handles.append(transformer_block.self_attn.rot_out_Q.register_forward_hook(functools.partial(cov_collectors['rot_out_Q'].compute_cov_out_batch, n_heads=n_heads)))
         handles.append(transformer_block.self_attn.rot_out_K.register_forward_hook(functools.partial(cov_collectors['rot_out_K'].compute_cov_out_batch, n_heads=n_kv_heads)))
+    kmean = None
+    if q_centered:
+        kmean = MeanCollector()
+        _tgt = (transformer_block.self_attn.rot_out_K if rotary_matrix is not None
+                else layers[QKV_NAMES["key"]])
+        handles.append(_tgt.register_forward_hook(
+            functools.partial(kmean.hook, n_heads=n_kv_heads)))
 
     if row_metric_fc1:
         coact = ReluCoactivation(layers['fc1'].out_features, layers['fc1'].weight.device)
@@ -359,6 +388,31 @@ def compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, 
     else:
         wrappers[QKV_NAMES['value']].H_col = cov_collectors[QKV_NAMES["value"]].XXT
 
+    # --q_centered: subtract the mean post-RoPE key outer product, so q_proj's row
+    # metric is the key COVARIANCE rather than the second moment. The exact softmax
+    # Jacobian is Cov_{p_t}(k) (diag(p) - p p^T, and sum_u p_tu = 1 makes any
+    # constant cancel), so a constant offset in k -- overwhelmingly the k_proj bias
+    # on Qwen -- is invisible to attention. BoA's uncentred metric spends its
+    # budget on that direction. Kronecker structure is untouched.
+    if q_centered and kmean is not None:
+        _src = 'rot_out_K' if rotary_matrix is not None else QKV_NAMES["key"]
+        # Do the subtraction in float64: centring cancels ~95% of the mass on Qwen,
+        # and in float32 that leaves eigenvalues around -5e-4 of the max -- close
+        # enough to BoA's per-head damping (~1% of the mean diagonal) that a
+        # Cholesky could fail mid-run. Then project to PSD, which the exact
+        # covariance is by construction; the clamp only removes round-off.
+        _Y = cov_collectors[_src].YYT.double()
+        _mu = kmean.mean().to(_Y.dtype)                                # [n_kv, d_h]
+        _Y = _Y - 2.0 * (_mu[:, :, None] * _mu[:, None, :])
+        _Y = 0.5 * (_Y + _Y.transpose(-1, -2))
+        _w, _V = torch.linalg.eigh(_Y)
+        _neg = (_w < 0).sum().item()
+        _Y = _V @ torch.diag_embed(_w.clamp_min(0)) @ _V.transpose(-1, -2)
+        if _neg:
+            print(f"[q_centered] clamped {_neg} negative eigenvalue(s) "
+                  f"(min {_w.min().item():.3e}, max {_w.max().item():.3e})")
+        cov_collectors[_src].YYT = _Y.to(cov_collectors[_src].YYT.dtype)
+
     # Assign H_row for query/key
     if n_kv_heads != n_heads:
         n_shared = n_heads // n_kv_heads
@@ -372,6 +426,16 @@ def compute_Hessian(transformer_block, n_heads, n_kv_heads, head_dim, wrappers, 
         rotary_matrix = rotary_matrix.cuda()
         wrappers[QKV_NAMES["query"]].H_row = (rotary_matrix.transpose(-1, -2) @ cov_collectors['rot_out_K'].YYT @ rotary_matrix).mean(0)
         wrappers[QKV_NAMES["key"]].H_row = (rotary_matrix.transpose(-1, -2) @ cov_collectors['rot_out_Q'].YYT @ rotary_matrix).mean(0)
+
+    # --q_identity: control arm. If BoA's q_proj row metric is mostly directions the
+    # softmax cannot see, replacing it with I (which reduces the two-sided solve to
+    # plain per-row GPTQ) should cost little.
+    if q_identity:
+        _q = QKV_NAMES["query"]
+        _d = wrappers[_q].H_row.shape[-1]
+        wrappers[_q].H_row = torch.eye(_d, device=wrappers[_q].H_row.device,
+                                       dtype=wrappers[_q].H_row.dtype
+                                       ).expand(n_heads, _d, _d).contiguous()
 
     # RSQ: overwrite the H_col of the chosen layers with the token-weighted one and,
     # for the one-sided baseline, drop the q/k row metric.

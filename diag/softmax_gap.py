@@ -134,3 +134,77 @@ def split_half_correct(obs, noise):
     """Remove the sampling floor: sqrt(max(0, obs^2 - noise^2))."""
     import math
     return math.sqrt(max(0.0, obs * obs - noise * noise))
+
+
+# ---------------------------------------------------------------------------
+# exact softmax Jacobian (centred).  J = diag(p) - p p^T, so
+#     dlogit^T J dlogit = sum_u p_tu (g.k_u)^2 - (sum_u p_tu g.k_u)^2
+#                       = g^T [ sum_u p_tu k_u k_u^T - kbar_t kbar_t^T ] g
+#                       = g^T Cov_{p_t}(k) g
+# Since sum_u p_tu = 1, writing k_u = b + k'_u cancels b EXACTLY: the metric is
+# Cov_{p_t}(k'). G123j uses only diag(J) = p(1-p), which RETAINS b b^T -- decisive
+# when the key second moment is bias-dominated, as it is on Qwen (~96%).
+# ---------------------------------------------------------------------------
+@torch.no_grad()
+def centred_metric(K, A, rot):
+    """M_t = R_t^T [ sum_u p_tu k_u k_u^T - kbar_t kbar_t^T ] R_t, back-rotated.
+
+    K   : [L, d_h] post-RoPE keys, as attention consumes them
+    A   : [L, L] attention probabilities, row t
+    rot : [L, d_h, d_h] per-position rotation R_t, or None
+    Returns [L, d_h, d_h].
+    """
+    L, d_h = K.shape
+    Ad = A.to(K.dtype)
+    KK = (K[:, :, None] * K[:, None, :]).reshape(L, d_h * d_h)
+    second = (Ad @ KK).reshape(L, d_h, d_h)            # sum_u p_tu k_u k_u^T
+    kbar = Ad @ K                                      # [L, d_h]
+    M = second - kbar[:, :, None] * kbar[:, None, :]   # Cov_{p_t}(k)  (PSD)
+    if rot is None:
+        return M
+    return rot.transpose(-1, -2) @ M @ rot             # back-rotate
+
+
+@torch.no_grad()
+def invisible_mass(H_row, Mbar, weak_frac=0.05):
+    """How much of BoA's H_row lives where the exact softmax metric barely looks.
+
+    A covariance is generically full rank, so the centred metric annihilates no
+    exact subspace -- a hard null-space threshold reports 0 and says nothing. What
+    matters is the SPECTRAL mismatch: sort the centred metric's eigendirections
+    ascending and take the weakest ones carrying `weak_frac` of its trace; those
+    are directions the exact Jacobian is nearly blind to. Report the share of
+    H_row's trace sitting there, plus the concentration of each metric.
+
+    Returns dict:
+      h_mass_in_weak  H_row trace share in the centred metric's weakest directions
+      h_top1          H_row trace share along its OWN top direction (rank-1-ness)
+      m_top1          same for the centred metric
+      cos             Frobenius cosine between the two, unit-trace normalised
+    """
+    mu, V = torch.linalg.eigh(Mbar.double())
+    order = torch.argsort(mu)                      # ascending
+    mu_s, V_s = mu[order], V[:, order]
+    h = torch.einsum("db,de,eb->b", V_s, H_row.double(), V_s).clamp_min(0)
+    cum = torch.cumsum(mu_s.clamp_min(0), 0) / mu_s.clamp_min(0).sum().clamp_min(1e-30)
+    weak = cum <= weak_frac
+    if not weak.any():
+        weak[0] = True
+    hm = (h[weak].sum() / h.sum().clamp_min(1e-30)).item()
+
+    hh = torch.linalg.eigvalsh(H_row.double()).clamp_min(0)
+    mm = mu.clamp_min(0)
+    a = Mbar.double() / Mbar.double().trace().clamp_min(1e-30)
+    b = H_row.double() / H_row.double().trace().clamp_min(1e-30)
+    cos = ((a * b).sum() / (a.norm() * b.norm()).clamp_min(1e-30)).item()
+    return {"h_mass_in_weak": hm,
+            "h_top1": (hh.max() / hh.sum().clamp_min(1e-30)).item(),
+            "m_top1": (mm.max() / mm.sum().clamp_min(1e-30)).item(),
+            "cos": cos}
+
+
+def rel_fro_matrix(Astar, Bboa):
+    """Scale-free discrepancy between two metrics, per head: both to unit trace."""
+    a = Astar / Astar.diagonal(dim1=-2, dim2=-1).sum(-1).clamp_min(1e-30)[..., None, None]
+    b = Bboa / Bboa.diagonal(dim1=-2, dim2=-1).sum(-1).clamp_min(1e-30)[..., None, None]
+    return ((a - b).pow(2).sum((-2, -1)).sqrt() / a.pow(2).sum((-2, -1)).sqrt())
