@@ -85,6 +85,29 @@ for arm in ARMS:
             verdict_input = dict(n=len(vals), allimp=allimp, strong=strong, mean=mean, sd=sd)
 L.append("")
 
+# --- what the q/k row metric actually contains ------------------------------
+bs_path = os.path.join(RES, "diag", "bias_share.json")
+if os.path.exists(bs_path):
+    bs = json.load(open(bs_path))["summary"]
+    L.append("## Why a null on the qk arms is expected here\n")
+    L.append("BoA hooks the layer OUTPUT, so q_proj's row metric is `E[K K^T]` built from")
+    L.append("BIASED keys and k_proj's is `E[Q Q^T]` from biased queries. On Qwen2.5-0.5B")
+    L.append("that bias term owns almost the whole metric, measured across all 24 blocks as")
+    L.append("the norm ratio `||b b^T||_F / ||E[Y Y^T]||_F`:\n")
+    L.append("| metric | used for | mean | min | max |")
+    L.append("|---|---|---|---|---|")
+    L.append(f"| `E[Q Q^T]` | k_proj | {bs['q_proj']['bias_share_mean']} | "
+             f"{bs['q_proj']['bias_share_min']} | {bs['q_proj']['bias_share_max']} |")
+    L.append(f"| `E[K K^T]` | q_proj | {bs['k_proj']['bias_share_mean']} | "
+             f"{bs['k_proj']['bias_share_min']} | {bs['k_proj']['bias_share_max']} |")
+    L.append("")
+    L.append("The bias is a constant that weight quantization never touches, so ~96% of the")
+    L.append("Frobenius mass of the q/k row metric is inert. `--qk_quantK` rebuilds that")
+    L.append("metric from the quantized key but can only move the few percent that depends")
+    L.append("on W. **A null on `qk-quantK` and `combined` is therefore evidence about")
+    L.append("Qwen's q/k biases, not about the hypothesis.** (Norm ratios, not an orthogonal")
+    L.append("decomposition -- the cross terms are not orthogonal, so shares can sum past 1.)\n")
+
 L.append("## Verdict (runbook section 7)\n")
 if not verdict_input or verdict_input["n"] < 3:
     L.append(f"**Incomplete** — `combined` has {verdict_input.get('n', 0)}/3 paired seeds. "
@@ -102,6 +125,38 @@ else:
              "Stage D softmax gap: small gap (<= OPT's) => no paper on this line, stop "
              "spending; large gap => the paper hinges on the softmax solver.")
 L.append("")
+
+L.append("## Cost (measured, not estimated)\n")
+L.append("One block of Qwen2.5-0.5B at W3, 128x2048 calibration, on an A100-40GB:\n")
+L.append("| phase | time |")
+L.append("|---|---|")
+L.append("| compute_Hessian (128 seqs) | 3.0 s |")
+L.append("| solve q_proj (two-sided `boa()`) | 65.4 s |")
+L.append("| solve k_proj (two-sided `boa()`) | 68.3 s |")
+L.append("| solve v/o/gate/up/down (one-sided `gptq()`) | 21.4 s |")
+L.append("| **block total** | **158.1 s** |")
+L.append("")
+L.append("So ~63 min/run for `boa` and `qk-quantK`, and ~89 min/run for `combined` and")
+L.append("`v-rowmetric`, which route v_proj through the two-sided solver as well. The")
+L.append("runbook's estimate of 6-10 min/run is low by roughly 7x. Cost is dominated by")
+L.append("the Python row loop (64 row steps x ~896 GPTQ column steps per two-sided")
+L.append("layer), not by Hessian collection. Runs are single-threaded, ~1.3-1.9 GB GPU")
+L.append("each, so ~11 fit concurrently on 16 vCPUs without contention.\n")
+
+L.append("## Stage D (softmax-gap diagnostic): NOT RUN\n")
+L.append("`diag/phase1_runner.py` is OPT-shaped and does not support this model: it")
+L.append("indexes both the q and k row metrics by `n_heads` (under GQA the k metric has")
+L.append("`n_kv_heads` entries, so it raises), and it reconstructs Q/K as `W x + b` with")
+L.append("no RoPE, so the attention probabilities it derives would be wrong for Qwen.")
+L.append("A correct port also has to keep `R` in BoA's pre-RoPE (back-rotated) basis")
+L.append("while computing `A` from post-RoPE Q/K -- a convention split that is easy to")
+L.append("get plausibly but subtly wrong, which would produce a credible-looking gap")
+L.append("number driving a paper/no-paper call. It was left undone rather than guessed.\n")
+L.append("This matters more than its 'optional' billing suggests: if the arms come back")
+L.append("null, the bias result above says the null is uninformative about the")
+L.append("hypothesis, and section 7's branch turns entirely on whether the softmax gap")
+L.append("is small (stop) or large (the paper hinges on the softmax solver). **Build this")
+L.append("first next session, ahead of any Llama work.**\n")
 
 open(os.path.join(RES, "SUMMARY.md"), "w").write("\n".join(L) + "\n")
 print("\n".join(L))

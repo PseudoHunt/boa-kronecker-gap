@@ -57,6 +57,9 @@ PY
 cp -f "$OUT" "$MIRROR/" 2>/dev/null
 
 # --- bank it: serialise pushes, never block the pipeline on git ---
+# NO_PUSH=1 holds the result on disk without publishing it -- used when a run is
+# launched speculatively, before its configuration has been confirmed.
+if [ "${NO_PUSH:-0}" = "1" ]; then echo "[git] NO_PUSH=1, holding $NAME locally"; exit 0; fi
 (
   flock -w 300 9 || { echo "[git] lock timeout for $NAME"; exit 0; }
   cd "$REPO" || exit 0
