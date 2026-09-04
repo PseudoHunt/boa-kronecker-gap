@@ -1,0 +1,18 @@
+{
+  "tag": "pbS-lext32k",
+  "seed": 1,
+  "model": "Qwen/Qwen2.5-0.5B",
+  "w_bits": 3,
+  "git_commit": "823a805",
+  "rc": 0,
+  "wall_s": 2405,
+  "args": "--llm_path /home/models/qwen2.5-0.5b --w_bits 3 --block_v --qparam_comput Hessian --seed 1 --cache_dir /home/jl_fs/calib --act_order_col --act_order_row --hout_length 32768 --save_ckpt /home/jl_fs/ckpt/phaseB/lext32k_s1.pt",
+  "wikitext2": 19.91,
+  "c4-new": 38.638,
+  "quant_time_s": 2334.824,
+  "results": {
+    "wikitext2": 19.91,
+    "c4-new": 38.638,
+    "time": 2334.824
+  }
+}
